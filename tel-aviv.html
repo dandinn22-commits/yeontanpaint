@@ -856,6 +856,7 @@ section[id],form[id]{scroll-margin-top:96px}
         </div>
       </div>
       <form class="leadcard" id="quickForm" novalidate aria-labelledby="lc-title">
+        <input type="text" name="_honey" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" style="display:none">
         <div class="lc-head">
           <div class="lc-badge">חינם · ללא התחייבות · תוך 30 דקות</div>
           <h2 id="lc-title">קבלו הצעת מחיר <span class="fast">מהירה</span></h2>
@@ -1004,6 +1005,7 @@ section[id],form[id]{scroll-margin-top:96px}
           </fieldset>
         </div>
         <form class="result" id="calcForm" novalidate>
+          <input type="text" name="_honey" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" style="display:none">
           <h3>ההערכה שלכם</h3>
           <div class="range num locked" id="range" aria-live="polite">2,900–3,800 ש"ח</div>
           <div class="sum" id="calcSum">4 חדרים · מרוהטת · קירות בלבד</div>
@@ -1230,6 +1232,7 @@ section[id],form[id]{scroll-margin-top:96px}
         <p class="hours"><b>שעות פעילות:</b> ראשון–חמישי 7:30–20:00 · שישי עד 12:00 · שבת סגור</p>
       </div>
       <form class="lead" id="leadForm" novalidate>
+        <input type="text" name="_honey" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" style="display:none">
         <label>שם<input id="f-name" name="name" autocomplete="name" required placeholder="שם מלא"></label>
         <label>טלפון<input id="f-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" required placeholder="050-0000000" dir="ltr" style="text-align:right"></label>
         <label>עיר<select id="f-city" name="city">
@@ -1370,6 +1373,19 @@ section[id],form[id]{scroll-margin-top:96px}
 
 <script>
 (function(){
+  /* leads: emailed to the business, with a copy to Dan */
+  var LEAD_URL='https://formsubmit.co/ajax/yehonatanhatzabaih@gmail.com',LEAD_CC='dandinn22@gmail.com';
+  var FAIL='השליחה לא הצליחה. התקשרו אלינו: 054-456-0552';
+  function sendLead(form,kind,fields){
+    var hp=form.querySelector('.hp');
+    if(hp&&hp.value)return Promise.resolve();
+    var data={_subject:'ליד חדש מהאתר יהונתן הצבעי'+(fields['עיר']?' – '+fields['עיר']:''),_cc:LEAD_CC,_template:'table',_captcha:'false','טופס':kind};
+    for(var k in fields)if(fields[k])data[k]=fields[k];
+    data['עמוד']=location.pathname;
+    return fetch(LEAD_URL,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(data)})
+      .then(function(r){return r.json().then(function(j){if(!r.ok||String(j.success)!=='true')throw new Error(j.message||'send failed')})});
+  }
+  function busy(form,on){var b=form.querySelector('button[type="submit"]');if(b)b.disabled=on}
   var f=document.getElementById('leadForm'),msg=document.getElementById('sentMsg');
   f.addEventListener('submit',function(e){
     e.preventDefault();
@@ -1377,8 +1393,12 @@ section[id],form[id]{scroll-margin-top:96px}
     msg.hidden=false;
     if(!n){msg.style.color='#ffb27d';msg.textContent='נא למלא שם.';return}
     if(p.length<9){msg.style.color='#ffb27d';msg.textContent='נא למלא מספר טלפון תקין, לדוגמה 050-1234567.';return}
-    msg.style.color='';msg.textContent='תודה '+n+'! הפרטים התקבלו. יהונתן יחזור אליכם בשעה שבחרתם.';
-    f.reset();
+    msg.style.color='';msg.textContent='שולחים...';busy(f,true);
+    sendLead(f,'טופס יצירת קשר',{'שם':n,'טלפון':document.getElementById('f-phone').value.trim(),'עיר':document.getElementById('f-city').value,'חדרים':document.getElementById('f-rooms').value,'מתי לחזור':document.getElementById('f-time').value}).then(function(){
+      msg.style.color='';msg.textContent='תודה '+n+'! הפרטים התקבלו. יהונתן יחזור אליכם בשעה שבחרתם.';f.reset();
+    },function(){
+      msg.style.color='#ffb27d';msg.textContent=FAIL;
+    }).then(function(){busy(f,false)});
   });
   function okPhone(v){return v.replace(/[^\d]/g,'').length>=9}
 
@@ -1387,7 +1407,12 @@ section[id],form[id]{scroll-margin-top:96px}
   qf.addEventListener('submit',function(e){
     e.preventDefault();qm.hidden=false;
     if(!okPhone(document.getElementById('q-phone').value)){qm.style.color='#ffb27d';qm.textContent='נא למלא מספר טלפון תקין.';return}
-    qm.style.color='';qm.textContent='תודה! יהונתן יחזור אליכם עם הצעת מחיר תוך 30 דקות.';qf.reset();
+    qm.style.color='';qm.textContent='שולחים...';busy(qf,true);
+    sendLead(qf,'טופס הצעת מחיר מהירה',{'שם':document.getElementById('q-name').value.trim(),'טלפון':document.getElementById('q-phone').value.trim(),'עיר':document.getElementById('q-city').value,'חדרים':document.getElementById('q-rooms').value}).then(function(){
+      qm.style.color='';qm.textContent='תודה! יהונתן יחזור אליכם עם הצעת מחיר תוך 30 דקות.';qf.reset();
+    },function(){
+      qm.style.color='#ffb27d';qm.textContent=FAIL;
+    }).then(function(){busy(qf,false)});
   });
 
   // calculator
@@ -1416,7 +1441,12 @@ section[id],form[id]{scroll-margin-top:96px}
     e.preventDefault();cm.hidden=false;
     if(!okPhone(document.getElementById('c-phone').value)){cm.textContent='נא למלא מספר טלפון תקין כדי לראות את המחיר.';return}
     document.getElementById('range').classList.remove('locked');
-    cm.textContent='זה הטווח שלכם. יהונתן יחזור אליכם עם מחיר סופי.';
+    cm.textContent='שולחים...';busy(cf,true);
+    sendLead(cf,'מחשבון מחיר',{'טלפון':document.getElementById('c-phone').value.trim(),'פרטי הדירה':document.getElementById('calcSum').textContent,'הערכת מחיר':document.getElementById('range').textContent}).then(function(){
+      cm.textContent='זה הטווח שלכם. יהונתן יחזור אליכם עם מחיר סופי.';
+    },function(){
+      cm.textContent='זה הטווח שלכם, אבל הפרטים לא נשלחו. התקשרו אלינו: 054-456-0552';
+    }).then(function(){busy(cf,false)});
   });
 
   var b=document.getElementById('copyPhone');
